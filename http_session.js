@@ -6,8 +6,8 @@
 const EventEmitter = require('events');
 const URL = require('url');
 
-const BufferPool = require('./node_core_bufferpool');
-const NodeCoreUtils = require('./node_core_utils');
+const BufferPool = require('./core_bufferpool');
+const NodeCoreUtils = require('./core_utils');
 
 class NodeHttpSession extends EventEmitter {
     constructor(config, req, res) {

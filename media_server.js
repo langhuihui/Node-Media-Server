@@ -4,8 +4,8 @@
 //  Copyright (c) 2017 Nodemedia. All rights reserved.
 //
 
-const NodeRtmpServer = require('./node_rtmp_server');
-const NodeHttpServer = require('./node_http_server');
+const NodeRtmpServer = require('./rtmp_server');
+const NodeHttpServer = require('./http_server');
 
 class NodeMediaServer {
     constructor(config) {

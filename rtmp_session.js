@@ -5,17 +5,17 @@
 //
 const EventEmitter = require('events');
 const QueryString = require('querystring');
-
+const AAC = require('./aac');
 const {
     decodeAmf3Cmd,
     decodeAmf0Cmd,
     decodeAmf0Data,
     AMFWriter
 } = require('./amf')
-const Handshake = require('./node_rtmp_handshake');
-const BufferPool = require('./node_core_bufferpool');
-const NodeHttpSession = require('./node_http_session');
-const NodeCoreUtils = require('./node_core_utils');
+const Handshake = require('./rtmp_handshake');
+const BufferPool = require('./core_bufferpool');
+const NodeHttpSession = require('./http_session');
+const NodeCoreUtils = require('./core_utils');
 
 const EXTENDED_TIMESTAMP_TYPE_NOT_USED = 'not-used';
 const EXTENDED_TIMESTAMP_TYPE_ABSOLUTE = 'absolute';
@@ -27,7 +27,40 @@ const STREAM_EOF = 0x01;
 const STREAM_DRY = 0x02;
 const STREAM_EMPTY = 0x1f;
 const STREAM_READY = 0x20;
-
+const AUDIO_CODEC_NAME = [
+    '',
+    'ADPCM',
+    "MP3",
+    "LinearLE",
+    "Nellymoser16",
+    "Nellymoser8",
+    "Nellymoser",
+    "G711A",
+    "G711U",
+    "",
+    "AAC",
+    "Speex",
+    "",
+    "",
+    "MP3-8K",
+    "DeviceSpecific",
+    "Uncompressed"
+];
+const VIDEO_CODEC_NAME = [
+    "",
+    "Jpeg",
+    "Sorenson-H263",
+    "ScreenVideo",
+    "On2-VP6",
+    "On2-VP6-Alpha",
+    "ScreenVideo2",
+    "H264",
+    "",
+    "",
+    "",
+    "",
+    "H265"
+];
 class NodeRtmpSession extends EventEmitter {
     constructor(config, socket) {
         super();
@@ -472,13 +505,20 @@ class NodeRtmpSession extends EventEmitter {
             let sound_size = (sound_format >> 1) & 0x01;
             let sound_rate = (sound_format >> 2) & 0x03;
             sound_format = (sound_format >> 4) & 0x0f;
-            console.log(`[rtmp handleAudioMessage] Parse AudioTagHeader sound_format=${sound_format} sound_type=${sound_type} sound_size=${sound_size} sound_rate=${sound_rate}`);
             this.audioCodec = sound_format;
+            this.audioCodecName = AUDIO_CODEC_NAME[sound_format];
+            console.log(`[rtmp handleAudioMessage] Parse AudioTagHeader sound_format=${sound_format} sound_type=${sound_type} sound_size=${sound_size} sound_rate=${sound_rate} codec_name=${this.audioCodecName}`);
+
             if (sound_format == 10) {
                 //cache aac sequence header
                 if (rtmpBody[1] == 0) {
                     this.aacSequenceHeader = Buffer.from(rtmpBody);
                     this.isFirstAudioReceived = true;
+                    let info = AAC.readAudioSpecificConfig(this.aacSequenceHeader);
+                    this.audioProfileName = AAC.getProfileName(info);
+                    this.audioSamplerate = info.sample_rate;
+                    this.audioChannels = info.channels;
+                    console.log(`[aac] profile:${this.audioProfileName} sample_rate:${info.sample_rate} channels:${info.channels}`)
                 }
             } else {
                 this.isFirstAudioReceived = true;
@@ -522,7 +562,8 @@ class NodeRtmpSession extends EventEmitter {
 
         if (!this.isFirstVideoReceived) {
             this.videoCodec = codec_id;
-            console.log(`[rtmp handleVideoMessage] Parse VideoTagHeader frame_type=${frame_type} codec_id=${codec_id}`);
+            this.videoCodecName = VIDEO_CODEC_NAME[codec_id];
+            console.log(`[rtmp handleVideoMessage] Parse VideoTagHeader frame_type=${frame_type} codec_id=${codec_id} codec_name=${this.videoCodecName}`);
 
             if (codec_id == 7 || codec_id == 12) {
                 //cache avc sequence header
