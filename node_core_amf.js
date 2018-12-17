@@ -549,7 +549,7 @@ function amf0decObject(buf) { // TODO: Implement references!
     let prop = amf0decUString(iBuf);
     // Logger.debug('Got field for property', prop);
     len += prop.len;
-    if(iBuf.length < prop.len) {
+    if (iBuf.length < prop.len) {
       break;
     }
     if (iBuf.slice(prop.len).readUInt8(0) == 0x09) {
@@ -978,15 +978,15 @@ function decodeAmf0Data(dbuf) {
   let resp = {};
 
   let cmd = amf0DecodeOne(buffer);
-  if(cmd) {
+  if (cmd) {
     resp.cmd = cmd.value;
     buffer = buffer.slice(cmd.len);
-  
+
     if (rtmpDataCode[cmd.value]) {
       rtmpDataCode[cmd.value].forEach(function (n) {
         if (buffer.length > 0) {
           let r = amf0DecodeOne(buffer);
-          if(r) {
+          if (r) {
             buffer = buffer.slice(r.len);
             resp[n] = r.value;
           }
@@ -1021,6 +1021,19 @@ function decodeAMF0Cmd(dbuf) {
         resp[n] = r.value;
       }
     });
+  } else if (this[cmd.value]) {
+    let r = amf0DecodeOne(buffer);
+    buffer = buffer.slice(r.len);
+    resp.transId = r.value
+    r = amf0DecodeOne(buffer);
+    buffer = buffer.slice(r.len);
+    resp.cmdObj = r.value
+    resp.args = []
+    while (buffer.length > 0) {
+      r = amf0DecodeOne(buffer);
+      buffer = buffer.slice(r.len);
+      resp.args.push(r.value)
+    }
   } else {
     Logger.error('Unknown command', resp);
   }

@@ -543,7 +543,7 @@ class NodeRtmpClient extends EventEmitter {
 
   rtmpInvokeHandler() {
     const { type, length, stream_id } = this.parserPacket.header
-    const { cmd, transId, info } = AMF.decodeAmf0Cmd(this.parserPacket.payload.slice(type === RTMP_TYPE_FLEX_MESSAGE ? 1 : 0, length));
+    const { cmd, transId, info, args } = AMF.decodeAmf0Cmd.call(this.client, this.parserPacket.payload.slice(type === RTMP_TYPE_FLEX_MESSAGE ? 1 : 0, length));
     switch (cmd) {
       case '_result':
         if (this.callbacks.has(transId)) {
@@ -558,6 +558,10 @@ class NodeRtmpClient extends EventEmitter {
         else
           this.emit('status', info);
         break;
+      default:
+        if (this.client && this.client[cmd]) {
+          this.client[cmd](...args)
+        }
     }
   }
 
